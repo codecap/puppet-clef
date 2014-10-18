@@ -2,20 +2,23 @@
 
 
 Clef gives you a possibility to convert an array or a hash to a configuration
-string, which can be then pass to a file puppet resource as its content.
+string, which can be then passed to a file puppet resource as its content.
 
 At the momment only one function is implemented:
 
+```puppet
 data_to_config(data, settings = nil)
+```
 
 It accepts the folowing arguments:
 
-** data:** can be an array or a hash
+**data:** can be an array or a hash
 Every hash can contain the following special keys:
-  __CUSTOM_FRAGMENT__ - custom fragment (string or an array of strings)
-  __CUSTOM_SETTINGS__ - used to set custom settings for the current section
-**settings:** is a set of settings to apply generating configuration
+  * **__CUSTOM_FRAGMENT__** - custom fragment (string or an array of strings)
+  * **__CUSTOM_SETTINGS__** - used to set custom settings for the current section
 
+**settings:** is a set of settings to apply generating configuration
+```
 Default settings
   prefix         => '['
   suffix         => ']'
@@ -25,11 +28,12 @@ Default settings
   quote_mark     => '"'
   indent         => '    '
   format_length  => 24
-
+```
 
 ### Converting data to a configuration
 
-h = [
+```puppet
+$data = [
     {
         'logging' => {
             'default'      => 'FILE:/var/log/krb5libs.log',
@@ -94,6 +98,8 @@ h = [
       ensure  => file,
       content => data_to_config($hash)
     }
+```
+
 
 ### The resulting configuration file
 ```
