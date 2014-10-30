@@ -32,108 +32,122 @@ Default settings
 
 ### Converting data to a configuration
 
+
+*sssd Configuration*
 ```puppet
-$data = [
-    {
-        'logging' => {
-            'default'      => 'FILE:/var/log/krb5libs.log',
-            'kdc'          => 'FILE:/var/log/krb5kdc.log',
-            'admin_server' => 'FILE:/var/log/kadmind.log',
-            'realms' => {
-                '__CUSTOM_FRAGMENT__' => [
-                    'EXAMPLE.COM = {',
-                    '    kdc          = kerberos.example.com',
-                    '    admin_server = kerberos.example.com',
-                    '}',
-                ]
-            },
-     }},
-    {
-        'libdefaults' => {
-            'default_realm'    => 'EXAMPLE.COM',
-            'dns_lookup_realm' => false,
-            'dns_lookup_kdc'   => false,
-            'ticket_lifetime'  => '24h',
-            'renew_lifetime'   => '7d',
-            'forwardable'      => true,
-            'subsection'       => {
-                'set_key01' => 'set_val01',
-                'set_key02' => 'set_val02',
-                'set_key03' => 'set_val03',
-            },
-            '__CUSTOM_SETTINGS__' => {
-                'prefix'         => '<',
-                'suffix'         => '>',
-                'separator'      => ' => ',
-                'opening_mark'   => ' {',
-                'closing_mark'   => '}',
-                'quote_mark'     => "'",
-            },
-
-    }},
-    {'realms' => {
-      '__CUSTOM_FRAGMENT__' => [
-          'EXAMPLE.COM = {',
-          '    kdc = kerberos.example.com',
-          '    admin_server = kerberos.example.com',
-          '}',
-      ]
-    }},
-    {'domain_realm' => {
-        '.example.com' => 'EXAMPLE.COM',
-        'example.com'  => 'EXAMPLE.COM',
-    }},
-    {'' => {
-        '__CUSTOM_SETTINGS__' => {
-            'prefix'         => '',
-            'suffix'         => '',
-            'indent' => '',
-        },
-        'key01' => 'val01',
-        'key02' => 'val02',
-        'key03' => 3,
-    }},
-
-    file { '/etc/service.conf':
-      ensure  => file,
-      content => data_to_config($hash)
-    }
-```
-
-
-### The resulting configuration file
-```
-[logging]
-    admin_server         = "FILE:/var/log/kadmind.log"
-    default              = "FILE:/var/log/krb5libs.log"
-    kdc                  = "FILE:/var/log/krb5kdc.log"
-    [realms]
-        EXAMPLE.COM = {
-            kdc          = kerberos.example.com
-            admin_server = kerberos.example.com
-        }
-<libdefaults> {
-    default_realm        => 'EXAMPLE.COM'
-    dns_lookup_kdc       => false
-    dns_lookup_realm     => false
-    forwardable          => true
-    renew_lifetime       => '7d'
-    <subsection> {
-        set_key01        => 'set_val01'
-        set_key02        => 'set_val02'
-        set_key03        => 'set_val03'
-    }
-    ticket_lifetime      => '24h'
+$data = {
+    'sssd' => {
+      'config_file_version'  => 2,
+      'reconnection_retries' => 3,
+      'sbus_timeout'         => 30,
+      'services'             => 'nss, pam, sudo, ssh',
+      'domains'              => 'default',
+    },
+    'nss' => {
+      'filter_groups'        => 'root',
+      'filter_users'         => 'adm,amavis,apache',
+      'reconnection_retries' => 3,
+    },
+    'pam' => {
+      'reconnection_retries'  => 3,
+    },
+    'domain/default' => {
+      'description'           => 'Plus.line LDAP-server',
+      'id_provider'           => 'ldap',
+      'auth_provider'         => 'ldap',
+      'chpass_provider'       => 'ldap',
+      'sudo_provider'         => 'ldap',
+      'enumerate'             => 'True',
+      'cache_credentials'     => 'True',
+    },
+  },
 }
-[realms]
-    EXAMPLE.COM = {
-        kdc = kerberos.example.com
-        admin_server = kerberos.example.com
-    }
-[domain_realm]
-    .example.com         = "EXAMPLE.COM"
-    example.com          = "EXAMPLE.COM"
-key01                    = "val01"
-key02                    = "val02"
-key03                    = 3
+
+$settings = {
+  quote_mark => '',
+  indent     => '  ',
+}
+
+```
+*Resulting sssd configuration file*
+```
+[domain/default]
+  auth_provider                  = ldap
+  cache_credentials              = True
+  chpass_provider                = ldap
+  description                    = Plus.line LDAP-server
+  enumerate                      = True
+  id_provider                    = ldap
+  sudo_provider                  = ldap
+[nss]
+  filter_groups                  = root
+  filter_users                   = adm,amavis,apache
+  reconnection_retries           = 3
+[pam]
+  reconnection_retries           = 3
+[sssd]
+  config_file_version            = 2
+  domains                        = default
+  reconnection_retries           = 3
+  sbus_timeout                   = 30
+  services                       = nss, pam, sudo, ssh
+```
+
+*sshd Configuration*
+```puppet
+$data = {
+  '#Settings'=> {
+    'Protocol'                        => '2',
+    'SyslogFacility'                  => 'AUTHPRIV',
+    'LogLevel'                        => 'VERBOSE',
+    'PermitRootLogin'                 => 'without-password',
+    'RevokedKeys'                     => '/etc/ssh/revoked_keys',
+    'PasswordAuthentication'          => 'yes',
+    'ChallengeResponseAuthentication' => 'no',
+    'UsePAM'                          => 'yes',
+    'X11Forwarding'                   => 'yes',
+    'UseDNS'                          => 'no',
+    'Banner'                          => '/etc/issue.net',
+    'Subsystem'                       => 'sftp /usr/libexec/openssh/sftp-server',
+  },
+  '#AcceptEnvs' => [
+    'AcceptEnv LANG              LC_CTYPE LC_NUMERIC LC_TIME      LC_COLLATE      LC_MONETARY LC_MESSAGES',
+    'AcceptEnv LC_PAPER          LC_NAME  LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT',
+    'AcceptEnv LC_IDENTIFICATION LC_ALL   LANGUAGE',
+    'AcceptEnv XMODIFIERS',
+  ],
+}
+
+$settings = {
+  prefix         => '',
+  suffix         => '',
+  separator      => '',
+  opening_mark   => '',
+  closing_mark   => '',
+  quote_mark     => '',
+  indent         => '',
+  format_length  => 32,
+}
+```
+
+*Resulting sshd configuration file*
+```
+#AcceptEnvs
+AcceptEnv LANG              LC_CTYPE LC_NUMERIC LC_TIME      LC_COLLATE      LC_MONETARY LC_MESSAGES
+AcceptEnv LC_PAPER          LC_NAME  LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT
+AcceptEnv LC_IDENTIFICATION LC_ALL   LANGUAGE
+AcceptEnv XMODIFIERS
+#Settings
+Banner                          /etc/issue.net
+ChallengeResponseAuthentication no
+LogLevel                        VERBOSE
+PasswordAuthentication          yes
+PermitRootLogin                 without-password
+Protocol                        2
+RevokedKeys                     /etc/ssh/revoked_keys
+Subsystem                       sftp /usr/libexec/openssh/sftp-server
+SyslogFacility                  AUTHPRIV
+UseDNS                          no
+UsePAM                          yes
+X11Forwarding                   yes
 ```
